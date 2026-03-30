@@ -577,6 +577,9 @@
     }
 
     // Final tax and CASS calculations (applied once at the end)
+    if (rows.length === 0) {
+      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0 };
+    }
     const last = rows[rows.length - 1];
     const gain = last.pfFee - last.totalInvested;
     const tax  = Math.max(0, gain) * taxPct;
