@@ -136,6 +136,55 @@
       min-width: 90px;
       text-align: right;
     }
+    .slider-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .slider-num-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1.4rem;
+      font-weight: 800;
+      width: 90px;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      text-align: right;
+      -moz-appearance: textfield;
+    }
+    .slider-num-input::-webkit-outer-spin-button,
+    .slider-num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .slider-num-input:focus { border-color: var(--accent); }
+    .slider-num-unit {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    /* ── Tax section ── */
+    .tax-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+    .tax-section-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .tax-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
     .slider-track-wrap {
       position: relative;
       padding: 8px 0;
@@ -255,6 +304,8 @@
     .result-card.c4::before { background: var(--accent3); }
     .result-card.c5::before { background: var(--accent5); }
     .result-card.c6::before { background: #ff9f43; }
+    .result-card.c7::before { background: #a78bfa; }
+    .result-card.c8::before { background: #f472b6; }
     .result-card .card-emoji { font-size: 1.5rem; }
     .result-card .card-label {
       font-size: 0.72rem;
@@ -366,7 +417,10 @@
   <div class="slider-card">
     <div class="slider-header">
       <span class="slider-label">🎯 Randament anual brut</span>
-      <span class="slider-value" id="sliderDisplay">9,00%</span>
+      <div class="slider-input-wrap">
+        <input type="number" id="returnInput" class="slider-num-input" min="0" max="50" step="0.01" value="9" />
+        <span class="slider-num-unit">%</span>
+      </div>
     </div>
     <div class="slider-track-wrap">
       <input type="range" id="returnSlider" min="0" max="50" step="0.01" value="9" />
@@ -374,6 +428,27 @@
     <div class="slider-ticks">
       <span>0%</span><span>10%</span><span>20%</span><span>30%</span>
       <span>40%</span><span>50%</span>
+    </div>
+  </div>
+
+  <!-- Taxe și Impozite -->
+  <div class="tax-section">
+    <div class="tax-section-title">🏛️ Taxe și Impozite</div>
+    <div class="tax-grid">
+      <div class="param-card">
+        <label>Impozit pe profit</label>
+        <div class="input-wrap">
+          <input type="number" id="pTax" value="10" min="0" max="100" step="0.1" />
+          <span class="unit">%</span>
+        </div>
+      </div>
+      <div class="param-card">
+        <label>CASS</label>
+        <div class="input-wrap">
+          <input type="number" id="pCASS" value="0" min="0" step="1" />
+          <span class="unit">lei</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -391,17 +466,27 @@
     </div>
     <div class="result-card c3">
       <span class="card-emoji">📈</span>
-      <span class="card-label">Portofoliu cu taxă</span>
+      <span class="card-label">Portofoliu cu taxă de administrare</span>
       <span class="card-value" id="rWithFee">—</span>
     </div>
     <div class="result-card c4">
       <span class="card-emoji">💸</span>
-      <span class="card-label">Total pierdut din taxe</span>
+      <span class="card-label">Total pierdut din taxa de administrare</span>
       <span class="card-value" id="rLost">—</span>
+    </div>
+    <div class="result-card c7">
+      <span class="card-emoji">🏛️</span>
+      <span class="card-label">Impozit pe profit</span>
+      <span class="card-value" id="rTax">—</span>
+    </div>
+    <div class="result-card c8">
+      <span class="card-emoji">🏥</span>
+      <span class="card-label">CASS</span>
+      <span class="card-value" id="rCASS">—</span>
     </div>
     <div class="result-card c5">
       <span class="card-emoji">🎯</span>
-      <span class="card-label">Câștig net (după taxă)</span>
+      <span class="card-label">Câștig net (după taxă, impozit și CASS)</span>
       <span class="card-value" id="rNetGain">—</span>
     </div>
     <div class="result-card c6">
@@ -466,6 +551,8 @@
     const feePct   = parseFloat(document.getElementById('pFee').value) / 100 || 0.005;
     const years    = Math.round(parseFloat(document.getElementById('pYears').value)) || 20;
     const ret      = parseFloat(document.getElementById('returnSlider').value) / 100;
+    const taxPct   = parseFloat(document.getElementById('pTax').value) / 100 || 0;
+    const cass     = parseFloat(document.getElementById('pCASS').value) || 0;
 
     const rows = [];
     let pfNoFee = 0, pfFee = 0, totalInvested = 0;
@@ -488,7 +575,18 @@
         lost: pfNoFee - pfFee,
       });
     }
-    return rows;
+
+    // Final tax and CASS calculations (applied once at the end)
+    if (rows.length === 0) {
+      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0 };
+    }
+    const last = rows[rows.length - 1];
+    const gain = last.pfFee - last.totalInvested;
+    const tax  = Math.max(0, gain) * taxPct;
+    const netGain = last.pfFee - last.totalInvested - tax - cass;
+    const totalReturn = (netGain / last.totalInvested) * 100;
+
+    return { rows, tax, cass, netGain, totalReturn };
   }
 
   // ── Render table ─────────────────────────────────────────────────────────
@@ -508,16 +606,15 @@
   }
 
   // ── Render results ───────────────────────────────────────────────────────
-  function renderResults(rows) {
+  function renderResults({ rows, tax, cass, netGain, totalReturn }) {
     const last = rows[rows.length - 1];
-    const totalInvested = last.totalInvested;
-    const netGain = last.pfFee - totalInvested;
-    const totalReturn = (netGain / totalInvested) * 100;
 
-    document.getElementById('rTotalInvested').textContent = fmt(totalInvested);
+    document.getElementById('rTotalInvested').textContent = fmt(last.totalInvested);
     document.getElementById('rNoFee').textContent         = fmt(last.pfNoFee);
     document.getElementById('rWithFee').textContent       = fmt(last.pfFee);
     document.getElementById('rLost').textContent          = fmt(last.lost);
+    document.getElementById('rTax').textContent           = fmt(tax);
+    document.getElementById('rCASS').textContent          = fmt(cass);
     document.getElementById('rNetGain').textContent       = fmt(netGain);
     document.getElementById('rTotalReturn').textContent   = fmtPct(totalReturn);
   }
@@ -629,8 +726,7 @@
   // ── Update slider display ────────────────────────────────────────────────
   function updateSliderDisplay() {
     const val = parseFloat(document.getElementById('returnSlider').value);
-    document.getElementById('sliderDisplay').textContent =
-      val.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    document.getElementById('returnInput').value = val.toFixed(2);
 
     // Update slider fill color
     const slider = document.getElementById('returnSlider');
@@ -642,20 +738,30 @@
   // ── Main update ──────────────────────────────────────────────────────────
   function update() {
     updateSliderDisplay();
-    const rows = calculate();
-    renderResults(rows);
-    renderTable(rows);
-    renderChart(rows);
+    const result = calculate();
+    renderResults(result);
+    renderTable(result.rows);
+    renderChart(result.rows);
   }
 
   // ── Event listeners ──────────────────────────────────────────────────────
   document.getElementById('returnSlider').addEventListener('input', update);
-  ['pMonthly','pIndex','pFee','pYears'].forEach(id => {
+
+  // Sync numeric input → slider
+  document.getElementById('returnInput').addEventListener('input', function() {
+    let val = parseFloat(this.value);
+    if (isNaN(val)) return;
+    val = Math.max(0, Math.min(50, val));
+    document.getElementById('returnSlider').value = val;
+    update();
+  });
+
+  ['pMonthly','pIndex','pFee','pYears','pTax','pCASS'].forEach(id => {
     document.getElementById(id).addEventListener('input', update);
   });
   window.addEventListener('resize', () => {
-    const rows = calculate();
-    renderChart(rows);
+    const result = calculate();
+    renderChart(result.rows);
   });
 
   // ── Init ─────────────────────────────────────────────────────────────────
