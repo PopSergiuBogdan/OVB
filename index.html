@@ -554,16 +554,22 @@
     const taxPct   = parseFloat(document.getElementById('pTax').value) / 100 || 0;
     const cass     = parseFloat(document.getElementById('pCASS').value) || 0;
 
+    const monthlyRetNoFee = Math.pow(1 + ret, 1 / 12) - 1;
+    const monthlyRetFee   = Math.pow(1 + ret - feePct, 1 / 12) - 1;
+
     const rows = [];
     let pfNoFee = 0, pfFee = 0, totalInvested = 0;
 
     for (let k = 1; k <= years; k++) {
       const monthly = monthly0 * Math.pow(1 + indexPct, k - 1);
       const annualContrib = monthly * 12;
-      totalInvested += annualContrib;
 
-      pfNoFee = (pfNoFee + annualContrib) * (1 + ret);
-      pfFee   = (pfFee   + annualContrib) * (1 + ret - feePct);
+      for (let m = 1; m <= 12; m++) {
+        pfNoFee = (pfNoFee + monthly) * (1 + monthlyRetNoFee);
+        pfFee   = (pfFee   + monthly) * (1 + monthlyRetFee);
+      }
+
+      totalInvested += annualContrib;
 
       rows.push({
         year: k,
