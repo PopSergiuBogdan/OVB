@@ -306,6 +306,7 @@
     .result-card.c6::before { background: #ff9f43; }
     .result-card.c7::before { background: #a78bfa; }
     .result-card.c8::before { background: #f472b6; }
+    .result-card.c9::before { background: #38bdf8; }
     .result-card .card-emoji { font-size: 1.5rem; }
     .result-card .card-label {
       font-size: 0.72rem;
@@ -484,6 +485,11 @@
       <span class="card-label">CASS</span>
       <span class="card-value" id="rCASS">—</span>
     </div>
+    <div class="result-card c9">
+      <span class="card-emoji">💼</span>
+      <span class="card-label">Portofoliu după toate taxele</span>
+      <span class="card-value" id="rAfterAllTaxes">—</span>
+    </div>
     <div class="result-card c5">
       <span class="card-emoji">🎯</span>
       <span class="card-label">Câștig net (după taxă, impozit și CASS)</span>
@@ -497,9 +503,10 @@
   </div>
 
   <!-- Chart -->
-  <div class="chart-card">
+  <div class="chart-card" style="position:relative;">
     <div class="chart-title">📈 Evoluția portofoliului în timp</div>
     <canvas id="chartCanvas" height="220"></canvas>
+    <div id="chartTooltip" style="display:none;position:absolute;pointer-events:none;background:#1a1f36;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;font-size:0.8rem;line-height:1.7;color:#c9d1d9;white-space:nowrap;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4);"></div>
     <div class="chart-legend">
       <div class="legend-item">
         <div class="legend-dot" style="background:var(--accent2)"></div>
@@ -545,17 +552,16 @@
   }
 
   // ── Calculation ──────────────────────────────────────────────────────────
+  let lastRows = [];
+
   function calculate() {
     const monthly0 = parseFloat(document.getElementById('pMonthly').value) || 600;
-    const indexPct = parseFloat(document.getElementById('pIndex').value) / 100 || 0.05;
-    const feePct   = parseFloat(document.getElementById('pFee').value) / 100 || 0.005;
+    const indexPct = parseFloat(document.getElementById('pIndex').value) / 100;
+    const feePct   = parseFloat(document.getElementById('pFee').value) / 100;
     const years    = Math.round(parseFloat(document.getElementById('pYears').value)) || 20;
     const ret      = parseFloat(document.getElementById('returnSlider').value) / 100;
-    const taxPct   = parseFloat(document.getElementById('pTax').value) / 100 || 0;
+    const taxPct   = parseFloat(document.getElementById('pTax').value) / 100;
     const cass     = parseFloat(document.getElementById('pCASS').value) || 0;
-
-    const monthlyRetNoFee = Math.pow(1 + ret, 1 / 12) - 1;
-    const monthlyRetFee   = Math.pow(1 + ret - feePct, 1 / 12) - 1;
 
     const rows = [];
     let pfNoFee = 0, pfFee = 0, totalInvested = 0;
@@ -563,13 +569,10 @@
     for (let k = 1; k <= years; k++) {
       const monthly = monthly0 * Math.pow(1 + indexPct, k - 1);
       const annualContrib = monthly * 12;
-
-      for (let m = 1; m <= 12; m++) {
-        pfNoFee = (pfNoFee + monthly) * (1 + monthlyRetNoFee);
-        pfFee   = (pfFee   + monthly) * (1 + monthlyRetFee);
-      }
-
       totalInvested += annualContrib;
+
+      pfNoFee = pfNoFee * (1 + ret) + annualContrib;
+      pfFee   = pfFee   * (1 + ret - feePct) + annualContrib;
 
       rows.push({
         year: k,
@@ -582,17 +585,18 @@
       });
     }
 
-    // Final tax and CASS calculations (applied once at the end)
     if (rows.length === 0) {
-      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0 };
+      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0, pfAfterAllTaxes: 0 };
     }
     const last = rows[rows.length - 1];
     const gain = last.pfFee - last.totalInvested;
     const tax  = Math.max(0, gain) * taxPct;
     const netGain = last.pfFee - last.totalInvested - tax - cass;
+    const pfAfterAllTaxes = last.pfFee - tax - cass;
     const totalReturn = (netGain / last.totalInvested) * 100;
 
-    return { rows, tax, cass, netGain, totalReturn };
+    lastRows = rows;
+    return { rows, tax, cass, netGain, totalReturn, pfAfterAllTaxes };
   }
 
   // ── Render table ─────────────────────────────────────────────────────────
@@ -612,7 +616,7 @@
   }
 
   // ── Render results ───────────────────────────────────────────────────────
-  function renderResults({ rows, tax, cass, netGain, totalReturn }) {
+  function renderResults({ rows, tax, cass, netGain, totalReturn, pfAfterAllTaxes }) {
     const last = rows[rows.length - 1];
 
     document.getElementById('rTotalInvested').textContent = fmt(last.totalInvested);
@@ -621,12 +625,13 @@
     document.getElementById('rLost').textContent          = fmt(last.lost);
     document.getElementById('rTax').textContent           = fmt(tax);
     document.getElementById('rCASS').textContent          = fmt(cass);
+    document.getElementById('rAfterAllTaxes').textContent = fmt(pfAfterAllTaxes);
     document.getElementById('rNetGain').textContent       = fmt(netGain);
     document.getElementById('rTotalReturn').textContent   = fmtPct(totalReturn);
   }
 
   // ── Render chart ─────────────────────────────────────────────────────────
-  function renderChart(rows) {
+  function renderChart(rows, hoverIndex) {
     const canvas = document.getElementById('chartCanvas');
     const dpr = window.devicePixelRatio || 1;
     const cssW = canvas.parentElement.clientWidth - 40;
@@ -727,6 +732,33 @@
       ctx.fillStyle = clr;
       ctx.fill();
     });
+
+    // Hover overlay
+    if (hoverIndex != null && hoverIndex >= 0 && hoverIndex < rows.length) {
+      const hx = xPos(hoverIndex);
+      const r  = rows[hoverIndex];
+
+      // Vertical line
+      ctx.beginPath();
+      ctx.moveTo(hx, pad.top);
+      ctx.lineTo(hx, pad.top + h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Dots on each series
+      [[r.pfNoFee, '#00d4aa'], [r.pfFee, '#6c63ff'], [r.totalInvested, '#ffd93d']].forEach(([val, clr]) => {
+        ctx.beginPath();
+        ctx.arc(hx, yPos(val), 5, 0, Math.PI * 2);
+        ctx.fillStyle = clr;
+        ctx.fill();
+        ctx.strokeStyle = '#1a1f36';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    }
   }
 
   // ── Update slider display ────────────────────────────────────────────────
@@ -769,6 +801,56 @@
     const result = calculate();
     renderChart(result.rows);
   });
+
+  // ── Chart tooltip ────────────────────────────────────────────────────────
+  (function() {
+    const canvas  = document.getElementById('chartCanvas');
+    const tooltip = document.getElementById('chartTooltip');
+
+    canvas.addEventListener('mousemove', function(e) {
+      if (!lastRows.length) return;
+
+      const rect   = canvas.getBoundingClientRect();
+      const cssW   = rect.width;
+      const pad    = { left: 70, right: 20 };
+      const w      = cssW - pad.left - pad.right;
+      const mouseX = e.clientX - rect.left;
+
+      // Find closest year index
+      let closest = 0, minDist = Infinity;
+      lastRows.forEach((r, i) => {
+        const xp = pad.left + (i / (lastRows.length - 1)) * w;
+        const d  = Math.abs(mouseX - xp);
+        if (d < minDist) { minDist = d; closest = i; }
+      });
+
+      renderChart(lastRows, closest);
+
+      const r = lastRows[closest];
+      tooltip.innerHTML =
+        `<strong style="color:#e2e8f0">An ${r.year}</strong><br>` +
+        `<span style="color:#ffd93d">Total investit: ${fmt(r.totalInvested)}</span><br>` +
+        `<span style="color:#00d4aa">Portofoliu fără taxă: ${fmt(r.pfNoFee)}</span><br>` +
+        `<span style="color:#a78bfa">Portofoliu cu taxă de administrare: ${fmt(r.pfFee)}</span>`;
+
+      // Position tooltip — keep inside chart-card
+      const cardRect   = canvas.parentElement.getBoundingClientRect();
+      const tipX = e.clientX - cardRect.left + 12;
+      const tipY = e.clientY - cardRect.top  + 12;
+      tooltip.style.display = 'block';
+      const tipW = tooltip.offsetWidth;
+      const left = (tipX + tipW > cardRect.width) ? tipX - tipW - 24 : tipX;
+
+      tooltip.style.left    = left + 'px';
+      tooltip.style.top     = tipY + 'px';
+      tooltip.style.display = 'block';
+    });
+
+    canvas.addEventListener('mouseleave', function() {
+      tooltip.style.display = 'none';
+      renderChart(lastRows);
+    });
+  })();
 
   // ── Init ─────────────────────────────────────────────────────────────────
   update();
