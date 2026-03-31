@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Calculator Investiție Lunară</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%B2%3C/text%3E%3C/svg%3E" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -334,7 +335,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 700px;
+      min-width: 900px;
       font-size: 0.875rem;
     }
     thead tr {
@@ -370,6 +371,57 @@
     .td-no-fee { color: var(--accent2) !important; font-weight: 600; }
     .td-fee    { color: var(--accent) !important; font-weight: 600; }
     .td-lost   { color: var(--accent3) !important; }
+    .td-after-tax { color: #f472b6 !important; font-weight: 600; }
+
+    .result-card.c10::before { background: #22d3ee; }
+
+    .currency-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    .currency-select:focus { border-color: var(--accent); }
+
+    .info-icon {
+      cursor: help;
+      position: relative;
+      font-size: 0.85rem;
+      margin-left: 4px;
+    }
+    .info-icon::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 130%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      color: var(--text);
+      white-space: pre-line;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 20;
+      min-width: 200px;
+      box-shadow: var(--shadow);
+      text-transform: none;
+      letter-spacing: normal;
+      font-weight: 500;
+    }
+    .info-icon:hover::after { opacity: 1; }
 
     @media (max-width: 600px) {
       .params-grid { grid-template-columns: 1fr 1fr; }
@@ -388,20 +440,25 @@
       <label>Investiție lunară inițială</label>
       <div class="input-wrap">
         <input type="number" id="pMonthly" value="600" min="1" step="50" />
-        <span class="unit">lei/lună</span>
+        <select id="pCurrency" class="currency-select">
+          <option value="lei">lei/lună</option>
+          <option value="euro">euro/lună</option>
+        </select>
       </div>
     </div>
     <div class="param-card">
       <label>Indexare anuală (inflație)</label>
       <div class="input-wrap">
-        <input type="number" id="pIndex" value="5" min="0" max="30" step="0.1" />
+        <input type="number" id="pIndex" value="0" min="0" max="30" step="0.1" />
         <span class="unit">%/an</span>
       </div>
     </div>
     <div class="param-card">
-      <label>Taxă anuală de administrare</label>
+      <label>Taxă anuală de administrare
+        <span class="info-icon" data-tooltip="0.20% – ETF-uri internaționale&#10;0.50% – ETF-uri românești">ℹ️</span>
+      </label>
       <div class="input-wrap">
-        <input type="number" id="pFee" value="0.50" min="0" max="5" step="0.01" />
+        <input type="number" id="pFee" value="0" min="0" max="5" step="0.01" />
         <span class="unit">%/an</span>
       </div>
     </div>
@@ -437,17 +494,19 @@
     <div class="tax-section-title">🏛️ Taxe și Impozite</div>
     <div class="tax-grid">
       <div class="param-card">
-        <label>Impozit pe profit</label>
+        <label>Impozit pe profit
+          <span class="info-icon" data-tooltip="1% – pana in 2025 (inclusiv)&#10;3% – broker cu rezidența fiscală în România&#10;16% – broker cu rezidența fiscală în străinătate">ℹ️</span>
+        </label>
         <div class="input-wrap">
-          <input type="number" id="pTax" value="10" min="0" max="100" step="0.1" />
+          <input type="number" id="pTax" value="0" min="0" max="100" step="0.1" />
           <span class="unit">%</span>
         </div>
       </div>
       <div class="param-card">
         <label>CASS</label>
         <div class="input-wrap">
-          <input type="number" id="pCASS" value="0" min="0" step="1" />
-          <span class="unit">lei</span>
+          <input type="number" id="pCASS" value="9720" min="0" step="1" />
+          <span class="unit" id="cassUnit">lei</span>
         </div>
       </div>
     </div>
@@ -497,15 +556,20 @@
     </div>
     <div class="result-card c6">
       <span class="card-emoji">📊</span>
-      <span class="card-label">Randament total pe banii investiți</span>
+      <span class="card-label">Randament total</span>
       <span class="card-value" id="rTotalReturn">—</span>
+    </div>
+    <div class="result-card c10">
+      <span class="card-emoji">📈</span>
+      <span class="card-label">Randament anualizat cu dobândă compusă</span>
+      <span class="card-value" id="rAnnualizedReturn">—</span>
     </div>
   </div>
 
   <!-- Chart -->
   <div class="chart-card" style="position:relative;">
     <div class="chart-title">📈 Evoluția portofoliului în timp</div>
-    <canvas id="chartCanvas" height="220"></canvas>
+    <canvas id="chartCanvas" height="400"></canvas>
     <div id="chartTooltip" style="display:none;position:absolute;pointer-events:none;background:#1a1f36;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;font-size:0.8rem;line-height:1.7;color:#c9d1d9;white-space:nowrap;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4);"></div>
     <div class="chart-legend">
       <div class="legend-item">
@@ -519,6 +583,10 @@
       <div class="legend-item">
         <div class="legend-dot" style="background:var(--accent4)"></div>
         <span>Total investit</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#f472b6"></div>
+        <span>Portofoliu după toate taxele</span>
       </div>
     </div>
   </div>
@@ -534,6 +602,7 @@
           <th>Total investit cumulat</th>
           <th>Portofoliu (fără taxă)</th>
           <th>Portofoliu (cu taxă)</th>
+          <th>Portofoliu (după taxe)</th>
           <th>Pierdut din taxe (cumulat)</th>
         </tr>
       </thead>
@@ -544,8 +613,11 @@
 
 <script>
   // ── Helpers ──────────────────────────────────────────────────────────────
+  function getCurrencyLabel() {
+    return document.getElementById('pCurrency').value;
+  }
   function fmt(val) {
-    return val.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei';
+    return val.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + getCurrencyLabel();
   }
   function fmtPct(val) {
     return val.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
@@ -574,6 +646,10 @@
       pfNoFee = pfNoFee * (1 + ret) + annualContrib;
       pfFee   = pfFee   * (1 + ret - feePct) + annualContrib;
 
+      const gainYear = pfFee - totalInvested;
+      const taxYear  = Math.max(0, gainYear) * taxPct;
+      const pfAfterTaxesYear = pfFee - taxYear - cass;
+
       rows.push({
         year: k,
         monthly,
@@ -581,22 +657,26 @@
         totalInvested,
         pfNoFee,
         pfFee,
+        pfAfterTaxes: pfAfterTaxesYear,
         lost: pfNoFee - pfFee,
       });
     }
 
     if (rows.length === 0) {
-      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0, pfAfterAllTaxes: 0 };
+      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0, cagr: 0, pfAfterAllTaxes: 0 };
     }
     const last = rows[rows.length - 1];
     const gain = last.pfFee - last.totalInvested;
     const tax  = Math.max(0, gain) * taxPct;
     const netGain = last.pfFee - last.totalInvested - tax - cass;
     const pfAfterAllTaxes = last.pfFee - tax - cass;
-    const totalReturn = (netGain / last.totalInvested) * 100;
+    const totalReturnPct = (pfAfterAllTaxes / last.totalInvested) * 100;
+    const cagr = (last.totalInvested > 0 && pfAfterAllTaxes > 0)
+      ? (Math.pow(pfAfterAllTaxes / last.totalInvested, 1 / years) - 1) * 100
+      : (pfAfterAllTaxes <= 0 ? -100 : 0);
 
     lastRows = rows;
-    return { rows, tax, cass, netGain, totalReturn, pfAfterAllTaxes };
+    return { rows, tax, cass, netGain, totalReturn: totalReturnPct, cagr, pfAfterAllTaxes };
   }
 
   // ── Render table ─────────────────────────────────────────────────────────
@@ -610,13 +690,14 @@
         <td>${fmt(r.totalInvested)}</td>
         <td class="td-no-fee">${fmt(r.pfNoFee)}</td>
         <td class="td-fee">${fmt(r.pfFee)}</td>
+        <td class="td-after-tax">${fmt(r.pfAfterTaxes)}</td>
         <td class="td-lost">${fmt(r.lost)}</td>
       </tr>
     `).join('');
   }
 
   // ── Render results ───────────────────────────────────────────────────────
-  function renderResults({ rows, tax, cass, netGain, totalReturn, pfAfterAllTaxes }) {
+  function renderResults({ rows, tax, cass, netGain, totalReturn, cagr, pfAfterAllTaxes }) {
     const last = rows[rows.length - 1];
 
     document.getElementById('rTotalInvested').textContent = fmt(last.totalInvested);
@@ -628,6 +709,8 @@
     document.getElementById('rAfterAllTaxes').textContent = fmt(pfAfterAllTaxes);
     document.getElementById('rNetGain').textContent       = fmt(netGain);
     document.getElementById('rTotalReturn').textContent   = fmtPct(totalReturn);
+    document.getElementById('rAnnualizedReturn').textContent = fmtPct(cagr);
+    document.getElementById('cassUnit').textContent       = getCurrencyLabel();
   }
 
   // ── Render chart ─────────────────────────────────────────────────────────
@@ -635,7 +718,7 @@
     const canvas = document.getElementById('chartCanvas');
     const dpr = window.devicePixelRatio || 1;
     const cssW = canvas.parentElement.clientWidth - 40;
-    const cssH = 220;
+    const cssH = 400;
     canvas.style.width  = cssW + 'px';
     canvas.style.height = cssH + 'px';
     canvas.width  = cssW * dpr;
@@ -669,7 +752,7 @@
       ctx.font = `${11 * dpr / dpr}px -apple-system, sans-serif`;
       ctx.textAlign = 'right';
       ctx.fillText(
-        (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0)) + ' lei',
+        (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val.toFixed(0)) + ' ' + getCurrencyLabel(),
         pad.left - 8, y + 4
       );
     }
@@ -722,10 +805,15 @@
     drawArea(r => yPos(r.pfFee), 'rgba(108,99,255,0.1)');
     drawLine(r => yPos(r.pfFee), '#6c63ff', 2.5);
 
+    // After-all-taxes area
+    drawArea(r => yPos(r.pfAfterTaxes), 'rgba(244,114,182,0.08)');
+    drawLine(r => yPos(r.pfAfterTaxes), '#f472b6', 2.5);
+
     // Dots at last point
     [[rows[rows.length-1].pfNoFee, '#00d4aa'],
      [rows[rows.length-1].pfFee,   '#6c63ff'],
-     [rows[rows.length-1].totalInvested, '#ffd93d']].forEach(([val, clr]) => {
+     [rows[rows.length-1].totalInvested, '#ffd93d'],
+     [rows[rows.length-1].pfAfterTaxes, '#f472b6']].forEach(([val, clr]) => {
       const ix = rows.length - 1;
       ctx.beginPath();
       ctx.arc(xPos(ix), yPos(val), 4, 0, Math.PI * 2);
@@ -749,7 +837,7 @@
       ctx.setLineDash([]);
 
       // Dots on each series
-      [[r.pfNoFee, '#00d4aa'], [r.pfFee, '#6c63ff'], [r.totalInvested, '#ffd93d']].forEach(([val, clr]) => {
+      [[r.pfNoFee, '#00d4aa'], [r.pfFee, '#6c63ff'], [r.totalInvested, '#ffd93d'], [r.pfAfterTaxes, '#f472b6']].forEach(([val, clr]) => {
         ctx.beginPath();
         ctx.arc(hx, yPos(val), 5, 0, Math.PI * 2);
         ctx.fillStyle = clr;
@@ -784,6 +872,7 @@
 
   // ── Event listeners ──────────────────────────────────────────────────────
   document.getElementById('returnSlider').addEventListener('input', update);
+  document.getElementById('pCurrency').addEventListener('change', update);
 
   // Sync numeric input → slider
   document.getElementById('returnInput').addEventListener('input', function() {
@@ -831,7 +920,8 @@
         `<strong style="color:#e2e8f0">An ${r.year}</strong><br>` +
         `<span style="color:#ffd93d">Total investit: ${fmt(r.totalInvested)}</span><br>` +
         `<span style="color:#00d4aa">Portofoliu fără taxă: ${fmt(r.pfNoFee)}</span><br>` +
-        `<span style="color:#a78bfa">Portofoliu cu taxă de administrare: ${fmt(r.pfFee)}</span>`;
+        `<span style="color:#a78bfa">Portofoliu cu taxă de administrare: ${fmt(r.pfFee)}</span><br>` +
+        `<span style="color:#f472b6">Portofoliu după toate taxele: ${fmt(r.pfAfterTaxes)}</span>`;
 
       // Position tooltip — keep inside chart-card
       const cardRect   = canvas.parentElement.getBoundingClientRect();
