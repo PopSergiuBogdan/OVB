@@ -463,9 +463,16 @@
       </div>
     </div>
     <div class="param-card">
-      <label>Perioadă</label>
+      <label>Perioada implicare</label>
       <div class="input-wrap">
-        <input type="number" id="pYears" value="20" min="1" max="50" step="1" />
+        <input type="number" id="pYearsContrib" value="20" min="1" max="50" step="1" />
+        <span class="unit">ani</span>
+      </div>
+    </div>
+    <div class="param-card">
+      <label>Perioada contract</label>
+      <div class="input-wrap">
+        <input type="number" id="pYearsHold" value="0" min="0" max="50" step="1" />
         <span class="unit">ani</span>
       </div>
     </div>
@@ -503,7 +510,9 @@
         </div>
       </div>
       <div class="param-card">
-        <label>CASS</label>
+        <label>CASS
+          <span class="info-icon" data-tooltip="Venit anual 24.300 lei (4.760€) → 2.430 lei / 476€&#10;Venit anual 48.600 lei (9.520€) → 4.860 lei / 952€&#10;Venit anual 97.200 lei (19.050€) → 9.720 lei / 1.905€">ℹ️</span>
+        </label>
         <div class="input-wrap">
           <input type="number" id="pCASS" value="9720" min="0" step="1" />
           <span class="unit" id="cassUnit">lei</span>
@@ -630,7 +639,9 @@
     const monthly0 = parseFloat(document.getElementById('pMonthly').value) || 600;
     const indexPct = parseFloat(document.getElementById('pIndex').value) / 100;
     const feePct   = parseFloat(document.getElementById('pFee').value) / 100;
-    const years    = Math.round(parseFloat(document.getElementById('pYears').value)) || 20;
+    const yearsContrib = Math.round(parseFloat(document.getElementById('pYearsContrib').value)) || 20;
+    const yearsHold    = Math.round(parseFloat(document.getElementById('pYearsHold').value)) || 0;
+    const years        = yearsContrib + yearsHold;
     const ret      = parseFloat(document.getElementById('returnSlider').value) / 100;
     const taxPct   = parseFloat(document.getElementById('pTax').value) / 100;
     const cass     = parseFloat(document.getElementById('pCASS').value) || 0;
@@ -639,8 +650,14 @@
     let pfNoFee = 0, pfFee = 0, totalInvested = 0;
 
     for (let k = 1; k <= years; k++) {
-      const monthly = monthly0 * Math.pow(1 + indexPct, k - 1);
-      const annualContrib = monthly * 12;
+      let monthly, annualContrib;
+      if (k <= yearsContrib) {
+        monthly = monthly0 * Math.pow(1 + indexPct, k - 1);
+        annualContrib = monthly * 12;
+      } else {
+        monthly = 0;
+        annualContrib = 0;
+      }
       totalInvested += annualContrib;
 
       pfNoFee = pfNoFee * (1 + ret) + annualContrib;
@@ -663,7 +680,7 @@
     }
 
     if (rows.length === 0) {
-      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0, cagr: 0, pfAfterAllTaxes: 0 };
+      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0, annualizedReturn: 0, pfAfterAllTaxes: 0 };
     }
     const last = rows[rows.length - 1];
     const gain = last.pfFee - last.totalInvested;
@@ -671,12 +688,10 @@
     const netGain = last.pfFee - last.totalInvested - tax - cass;
     const pfAfterAllTaxes = last.pfFee - tax - cass;
     const totalReturnPct = (pfAfterAllTaxes / last.totalInvested) * 100;
-    const cagr = (last.totalInvested > 0 && pfAfterAllTaxes > 0)
-      ? (Math.pow(pfAfterAllTaxes / last.totalInvested, 1 / years) - 1) * 100
-      : (pfAfterAllTaxes <= 0 ? -100 : 0);
+    const annualizedReturn = totalReturnPct / years;
 
     lastRows = rows;
-    return { rows, tax, cass, netGain, totalReturn: totalReturnPct, cagr, pfAfterAllTaxes };
+    return { rows, tax, cass, netGain, totalReturn: totalReturnPct, annualizedReturn, pfAfterAllTaxes };
   }
 
   // ── Render table ─────────────────────────────────────────────────────────
@@ -697,7 +712,7 @@
   }
 
   // ── Render results ───────────────────────────────────────────────────────
-  function renderResults({ rows, tax, cass, netGain, totalReturn, cagr, pfAfterAllTaxes }) {
+  function renderResults({ rows, tax, cass, netGain, totalReturn, annualizedReturn, pfAfterAllTaxes }) {
     const last = rows[rows.length - 1];
 
     document.getElementById('rTotalInvested').textContent = fmt(last.totalInvested);
@@ -709,7 +724,7 @@
     document.getElementById('rAfterAllTaxes').textContent = fmt(pfAfterAllTaxes);
     document.getElementById('rNetGain').textContent       = fmt(netGain);
     document.getElementById('rTotalReturn').textContent   = fmtPct(totalReturn);
-    document.getElementById('rAnnualizedReturn').textContent = fmtPct(cagr);
+    document.getElementById('rAnnualizedReturn').textContent = fmtPct(annualizedReturn);
     document.getElementById('cassUnit').textContent       = getCurrencyLabel();
   }
 
@@ -883,7 +898,7 @@
     update();
   });
 
-  ['pMonthly','pIndex','pFee','pYears','pTax','pCASS'].forEach(id => {
+  ['pMonthly','pIndex','pFee','pYearsContrib','pYearsHold','pTax','pCASS'].forEach(id => {
     document.getElementById(id).addEventListener('input', update);
   });
   window.addEventListener('resize', () => {
