@@ -558,6 +558,11 @@
       <span class="card-label">Portofoliu după toate taxele</span>
       <span class="card-value" id="rAfterAllTaxes">—</span>
     </div>
+    <div class="result-card c11">
+      <span class="card-emoji">💰</span>
+      <span class="card-label">Toate taxele adunate</span>
+      <span class="card-value" id="rAllTaxes">—</span>
+    </div>
     <div class="result-card c5">
       <span class="card-emoji">🎯</span>
       <span class="card-label">Câștig net (după taxă, impozit și CASS)</span>
@@ -680,18 +685,19 @@
     }
 
     if (rows.length === 0) {
-      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0, annualizedReturn: 0, pfAfterAllTaxes: 0 };
+      return { rows, tax: 0, cass, netGain: 0, totalReturn: 0, annualizedReturn: 0, pfAfterAllTaxes: 0, allTaxes: 0 };
     }
     const last = rows[rows.length - 1];
     const gain = last.pfFee - last.totalInvested;
     const tax  = Math.max(0, gain) * taxPct;
+    const allTaxes = last.lost + tax + cass;
     const netGain = last.pfFee - last.totalInvested - tax - cass;
     const pfAfterAllTaxes = last.pfFee - tax - cass;
     const totalReturnPct = (pfAfterAllTaxes / last.totalInvested) * 100;
     const annualizedReturn = totalReturnPct / years;
 
     lastRows = rows;
-    return { rows, tax, cass, netGain, totalReturn: totalReturnPct, annualizedReturn, pfAfterAllTaxes };
+    return { rows, tax, cass, netGain, totalReturn: totalReturnPct, annualizedReturn, pfAfterAllTaxes, allTaxes };
   }
 
   // ── Render table ─────────────────────────────────────────────────────────
@@ -712,7 +718,7 @@
   }
 
   // ── Render results ───────────────────────────────────────────────────────
-  function renderResults({ rows, tax, cass, netGain, totalReturn, annualizedReturn, pfAfterAllTaxes }) {
+  function renderResults({ rows, tax, cass, netGain, totalReturn, annualizedReturn, pfAfterAllTaxes, allTaxes }) {
     const last = rows[rows.length - 1];
 
     document.getElementById('rTotalInvested').textContent = fmt(last.totalInvested);
@@ -722,6 +728,7 @@
     document.getElementById('rTax').textContent           = fmt(tax);
     document.getElementById('rCASS').textContent          = fmt(cass);
     document.getElementById('rAfterAllTaxes').textContent = fmt(pfAfterAllTaxes);
+    document.getElementById('rAllTaxes').textContent      = fmt(allTaxes);
     document.getElementById('rNetGain').textContent       = fmt(netGain);
     document.getElementById('rTotalReturn').textContent   = fmtPct(totalReturn);
     document.getElementById('rAnnualizedReturn').textContent = fmtPct(annualizedReturn);
