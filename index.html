@@ -55,7 +55,7 @@
     /* ── Parameters ── */
     .params-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 16px;
       margin-bottom: 28px;
     }
@@ -437,13 +437,20 @@
   <!-- Parameters -->
   <div class="params-grid">
     <div class="param-card">
-      <label>Investiție lunară inițială</label>
+      <label>Investiție lunară</label>
       <div class="input-wrap">
         <input type="number" id="pMonthly" value="600" min="1" step="50" />
         <select id="pCurrency" class="currency-select">
           <option value="lei">lei/lună</option>
           <option value="euro">euro/lună</option>
         </select>
+      </div>
+    </div>
+    <div class="param-card">
+      <label>Top-up inițial</label>
+      <div class="input-wrap">
+        <input type="number" id="pTopUp" value="0" min="0" step="100" />
+        <span class="unit" id="topUpUnit">lei</span>
       </div>
     </div>
     <div class="param-card">
@@ -455,7 +462,7 @@
     </div>
     <div class="param-card">
       <label>Taxă anuală de administrare
-        <span class="info-icon" data-tooltip="0.20% – ETF-uri internaționale&#10;0.50% – ETF-uri românești">ℹ️</span>
+        <span class="info-icon" data-tooltip="0.20% – ETF-uri internaționale&#10;1.29% / 1.50% – ETF-uri românești Patria / BT">ℹ️</span>
       </label>
       <div class="input-wrap">
         <input type="number" id="pFee" value="0" min="0" max="5" step="0.01" />
@@ -538,15 +545,15 @@
       <span class="card-label">Portofoliu fără taxă</span>
       <span class="card-value" id="rNoFee">—</span>
     </div>
-    <div class="result-card c3">
-      <span class="card-emoji">📈</span>
-      <span class="card-label">Portofoliu cu taxă de administrare</span>
-      <span class="card-value" id="rWithFee">—</span>
-    </div>
     <div class="result-card c4">
       <span class="card-emoji">💸</span>
       <span class="card-label">Total pierdut din taxa de administrare</span>
       <span class="card-value" id="rLost">—</span>
+    </div>
+    <div class="result-card c3">
+      <span class="card-emoji">📈</span>
+      <span class="card-label">Portofoliu cu taxă de administrare</span>
+      <span class="card-value" id="rWithFee">—</span>
     </div>
     <div class="result-card c7">
       <span class="card-emoji">🏛️</span>
@@ -558,15 +565,15 @@
       <span class="card-label">CASS</span>
       <span class="card-value" id="rCASS">—</span>
     </div>
-    <div class="result-card c9">
-      <span class="card-emoji">💼</span>
-      <span class="card-label">Portofoliu după toate taxele</span>
-      <span class="card-value" id="rAfterAllTaxes">—</span>
-    </div>
     <div class="result-card c11">
       <span class="card-emoji">💰</span>
       <span class="card-label">Toate taxele adunate</span>
       <span class="card-value" id="rAllTaxes">—</span>
+    </div>
+    <div class="result-card c9">
+      <span class="card-emoji">💼</span>
+      <span class="card-label">Portofoliu după toate taxele</span>
+      <span class="card-value" id="rAfterAllTaxes">—</span>
     </div>
     <div class="result-card c5">
       <span class="card-emoji">🎯</span>
@@ -647,6 +654,7 @@
 
   function calculate() {
     const monthly0 = parseFloat(document.getElementById('pMonthly').value) || 600;
+    const topUp = parseFloat(document.getElementById('pTopUp').value) || 0;
     const indexPct = parseFloat(document.getElementById('pIndex').value) / 100;
     const feePct   = parseFloat(document.getElementById('pFee').value) / 100;
     const yearsContrib = Math.round(parseFloat(document.getElementById('pYearsContrib').value)) || 20;
@@ -657,7 +665,7 @@
     const cass     = parseFloat(document.getElementById('pCASS').value) || 0;
 
     const rows = [];
-    let pfNoFee = 0, pfFee = 0, totalInvested = 0;
+    let pfNoFee = topUp, pfFee = topUp, totalInvested = topUp;
 
     for (let k = 1; k <= years; k++) {
       let monthly, annualContrib;
@@ -746,6 +754,7 @@
     document.getElementById('rTotalReturn').textContent   = fmtPct(totalReturn);
     document.getElementById('rAnnualizedReturn').textContent = fmtPct(annualizedReturn);
     document.getElementById('cassUnit').textContent       = getCurrencyLabel();
+    document.getElementById('topUpUnit').textContent      = getCurrencyLabel();
   }
 
   // ── Render chart ─────────────────────────────────────────────────────────
@@ -918,7 +927,7 @@
     update();
   });
 
-  ['pMonthly','pIndex','pFee','pYearsContrib','pYearsHold','pTax','pCASS'].forEach(id => {
+  ['pMonthly','pTopUp','pIndex','pFee','pYearsContrib','pYearsHold','pTax','pCASS'].forEach(id => {
     document.getElementById(id).addEventListener('input', update);
   });
   window.addEventListener('resize', () => {
