@@ -528,6 +528,11 @@
       <span class="card-label">Total investit (din buzunar)</span>
       <span class="card-value" id="rTotalInvested">—</span>
     </div>
+    <div class="result-card c10">
+      <span class="card-emoji">💵</span>
+      <span class="card-label">Profit brut</span>
+      <span class="card-value" id="rGrossProfit">—</span>
+    </div>
     <div class="result-card c2">
       <span class="card-emoji">📈</span>
       <span class="card-label">Portofoliu fără taxă</span>
@@ -668,9 +673,15 @@
       pfNoFee = pfNoFee * (1 + ret) + annualContrib;
       pfFee   = pfFee   * (1 + ret - feePct) + annualContrib;
 
-      const gainYear = pfFee - totalInvested;
-      const taxYear  = Math.max(0, gainYear) * taxPct;
-      const pfAfterTaxesYear = pfFee - taxYear - cass;
+      // Apply taxes only in the last year
+      let pfAfterTaxesYear;
+      if (k === years) {
+        const gainYear = pfFee - totalInvested;
+        const taxYear  = Math.max(0, gainYear) * taxPct;
+        pfAfterTaxesYear = pfFee - taxYear - cass;
+      } else {
+        pfAfterTaxesYear = pfFee;
+      }
 
       rows.push({
         year: k,
@@ -720,8 +731,10 @@
   // ── Render results ───────────────────────────────────────────────────────
   function renderResults({ rows, tax, cass, netGain, totalReturn, annualizedReturn, pfAfterAllTaxes, allTaxes }) {
     const last = rows[rows.length - 1];
+    const grossProfit = last.pfNoFee - last.totalInvested;
 
     document.getElementById('rTotalInvested').textContent = fmt(last.totalInvested);
+    document.getElementById('rGrossProfit').textContent   = fmt(grossProfit);
     document.getElementById('rNoFee').textContent         = fmt(last.pfNoFee);
     document.getElementById('rWithFee').textContent       = fmt(last.pfFee);
     document.getElementById('rLost').textContent          = fmt(last.lost);
