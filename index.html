@@ -97,6 +97,10 @@
     .param-card input[type="number"]::-webkit-outer-spin-button,
     .param-card input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
     .param-card input[type="number"]:focus { border-color: var(--accent); }
+    #pMonthly {
+      min-width: 80px;
+      flex: 2;
+    }
     .param-card .unit {
       color: var(--text-muted);
       font-size: 0.9rem;
@@ -374,6 +378,7 @@
     .td-after-tax { color: #f472b6 !important; font-weight: 600; }
 
     .result-card.c10::before { background: #22d3ee; }
+    .result-card.c11::before { background: #fb923c; }
 
     .currency-select {
       background: var(--surface2);
@@ -441,8 +446,8 @@
       <div class="input-wrap">
         <input type="number" id="pMonthly" value="600" min="1" step="50" />
         <select id="pCurrency" class="currency-select">
-          <option value="lei">lei/lună</option>
-          <option value="euro">euro/lună</option>
+          <option value="lei">lei</option>
+          <option value="euro">euro</option>
         </select>
       </div>
     </div>
