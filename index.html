@@ -658,7 +658,8 @@
   let lastRows = [];
 
   function calculate() {
-    const monthly0 = parseFloat(document.getElementById('pMonthly').value) || 600;
+    const monthly0Val = parseFloat(document.getElementById('pMonthly').value);
+    const monthly0 = isNaN(monthly0Val) ? 600 : monthly0Val;
     const topUp = parseFloat(document.getElementById('pTopUp').value) || 0;
     const indexPct = parseFloat(document.getElementById('pIndex').value) / 100;
     const feePct   = parseFloat(document.getElementById('pFee').value) / 100;
